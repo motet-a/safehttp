@@ -1,6 +1,5 @@
-
 pub fn is_whitespace_byte(b: u8) -> bool {
-    return b == b' ' || b == b'\t'
+    return b == b' ' || b == b'\t';
 }
 
 /// VCHAR
@@ -23,5 +22,3 @@ fn is_obs_text_byte(byte: u8) -> bool {
 pub fn is_status_reason_byte(byte: u8) -> bool {
     byte == b'\t' || byte == b' ' || is_visible_byte(byte) || is_obs_text_byte(byte)
 }
-
-

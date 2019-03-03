@@ -1,6 +1,4 @@
-
 pub enum TransferEncoding {
     Chunked,
-    None
+    None,
 }
-

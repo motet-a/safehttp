@@ -1,4 +1,3 @@
-
 use error::Error;
 use http;
 use types::TransferEncoding;
@@ -8,11 +7,11 @@ pub fn parse_transfer_encoding(
     version: http::Version,
 ) -> Result<TransferEncoding, Error> {
     if version != http::Version::HTTP_11 {
-        return Ok(TransferEncoding::None)
+        return Ok(TransferEncoding::None);
     }
 
     if headers.get_all("Transfer-Encoding").iter().count() > 1 {
-        return Err(Error::InvalidTransferEncoding)
+        return Err(Error::InvalidTransferEncoding);
     }
 
     match headers.get("Transfer-Encoding").map(|v| v.as_bytes()) {
@@ -28,7 +27,7 @@ pub fn parse_content_length(headers: &http::HeaderMap) -> Result<Option<u64>, Er
             // Necessary because things like `+123` successfully parse below
             // and are forbidden by the spec
             if !len_str.as_bytes().iter().all(|b| b.is_ascii_digit()) {
-                return Err(Error::InvalidContentLength)
+                return Err(Error::InvalidContentLength);
             }
 
             let len = len_str
@@ -36,10 +35,8 @@ pub fn parse_content_length(headers: &http::HeaderMap) -> Result<Option<u64>, Er
                 .map_err(|_| Error::InvalidContentLength)?;
 
             Ok(Some(len))
-        },
+        }
         None => Ok(None),
         _ => Err(Error::InvalidContentLength),
     }
 }
-
-

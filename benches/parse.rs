@@ -8,10 +8,7 @@ extern crate safehttp;
 use std::io;
 
 fn concat(bytes_list: Vec<&[u8]>) -> Vec<u8> {
-    bytes_list
-        .iter()
-        .flat_map(|b| b.to_vec())
-        .collect()
+    bytes_list.iter().flat_map(|b| b.to_vec()).collect()
 }
 
 fn concat_lines(bytes_list: Vec<&[u8]>) -> Vec<u8> {
@@ -65,4 +62,3 @@ fn criterion_benchmark(c: &mut Criterion) {
 
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
-

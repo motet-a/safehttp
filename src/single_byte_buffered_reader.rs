@@ -8,9 +8,7 @@ fn poison(buffer: &mut [u8]) {
 
 #[cfg(not(debug_assertions))]
 #[inline]
-fn poison(_buffer: &mut [u8]) {
-}
-
+fn poison(_buffer: &mut [u8]) {}
 
 /// TODO: Write more documentation
 ///
@@ -27,23 +25,22 @@ fn reliable_read_partial(stream: &mut io::Read, buffer: &mut [u8]) -> io::Result
                 total += size;
                 if total == buffer.len() {
                     // `size` may be zero here if we encounter an EOF
-                    return Ok(total)
+                    return Ok(total);
                 }
                 if size == 0 {
                     // EOF
-                    return Ok(total)
+                    return Ok(total);
                 }
             }
             Err(err) => {
                 if err.kind() != io::ErrorKind::Interrupted {
                     poison(buffer);
-                    return Err(err)
+                    return Err(err);
                 }
             }
         }
     }
 }
-
 
 pub trait SingleByteBufferedReader {
     /// The buffer is filled with zeroes if an error is returned.
@@ -58,10 +55,13 @@ pub trait SingleByteBufferedReader {
     fn read_bytes(&mut self, out_buffer: &mut [u8]) -> io::Result<()> {
         let read_count = self.read_bytes_partial(out_buffer)?;
         if read_count == out_buffer.len() {
-            return Ok(())
+            return Ok(());
         }
         poison(out_buffer);
-        Err(io::Error::new(io::ErrorKind::UnexpectedEof, "expected one byte"))
+        Err(io::Error::new(
+            io::ErrorKind::UnexpectedEof,
+            "expected one byte",
+        ))
     }
 
     fn read_byte(&mut self) -> io::Result<u8> {
@@ -73,12 +73,18 @@ pub trait SingleByteBufferedReader {
 
 pub struct SingleByteBufferedReaderImpl<S: io::Read> {
     stream: S,
-    pushed_back_byte: Option<u8>
+    pushed_back_byte: Option<u8>,
 }
 
-impl<S> SingleByteBufferedReaderImpl<S> where S: io::Read {
+impl<S> SingleByteBufferedReaderImpl<S>
+where
+    S: io::Read,
+{
     pub fn new(stream: S) -> Self {
-        Self { stream, pushed_back_byte: None }
+        Self {
+            stream,
+            pushed_back_byte: None,
+        }
     }
 
     /// Panics if there is a pushed back byte
@@ -91,12 +97,15 @@ impl<S> SingleByteBufferedReaderImpl<S> where S: io::Read {
     }
 }
 
-impl<S> SingleByteBufferedReader for SingleByteBufferedReaderImpl<S> where S: io::Read {
+impl<S> SingleByteBufferedReader for SingleByteBufferedReaderImpl<S>
+where
+    S: io::Read,
+{
     fn read_bytes_partial(&mut self, out_buffer: &mut [u8]) -> io::Result<usize> {
         poison(out_buffer);
 
         if out_buffer.len() == 0 {
-            return Ok(0)
+            return Ok(0);
         }
 
         let mut total = 0;
@@ -105,17 +114,13 @@ impl<S> SingleByteBufferedReader for SingleByteBufferedReaderImpl<S> where S: io
             self.pushed_back_byte = None;
             total += 1;
             if out_buffer.len() == 1 {
-                return Ok(1)
+                return Ok(1);
             }
         }
 
         match reliable_read_partial(&mut self.stream, &mut out_buffer[total..]) {
-            Ok(size) => {
-                Ok(total + size)
-            }
-            Err(err) => {
-                Err(err)
-            }
+            Ok(size) => Ok(total + size),
+            Err(err) => Err(err),
         }
     }
 
@@ -125,12 +130,10 @@ impl<S> SingleByteBufferedReader for SingleByteBufferedReaderImpl<S> where S: io
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
-    use std::io;
     use super::*;
+    use std::io;
 
     struct BrokenReader {}
 
@@ -139,7 +142,6 @@ mod tests {
             Err(io::Error::new(io::ErrorKind::PermissionDenied, "oops"))
         }
     }
-
 
     #[test]
     fn test_reliable_read_partial() {
@@ -186,7 +188,6 @@ mod tests {
         assert_eq!(buf, [0u8, 0u8, 0u8, 0u8, 0u8]);
     }
 
-
     #[test]
     fn test_single_byte_buffered_reader() {
         let mut cursor = io::Cursor::new("abc");
@@ -201,7 +202,9 @@ mod tests {
         let mut buf = [0u8; 0];
         assert!(reader.read_bytes(&mut buf).is_ok());
 
-        assert_eq!(reader.read_byte().unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        assert_eq!(
+            reader.read_byte().unwrap_err().kind(),
+            io::ErrorKind::UnexpectedEof
+        );
     }
 }
-

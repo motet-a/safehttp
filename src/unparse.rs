@@ -1,23 +1,19 @@
-
 use character_types;
 use http;
-use http::{
-    header::{
-        HeaderValue,
-        HeaderName
-    }
-};
+use http::header::{HeaderName, HeaderValue};
 use io;
 use parse_headers;
-use types::{TransferEncoding};
-
+use types::TransferEncoding;
 
 /// Encoder for chunked transfer encoding.
 pub struct ChunkWriter<S: io::Write> {
-    writer: S
+    writer: S,
 }
 
-impl<S> ChunkWriter<S> where S: io::Write {
+impl<S> ChunkWriter<S>
+where
+    S: io::Write,
+{
     /// Writes the last special chunk (with a chunk size of 0)
     pub fn write_end_marker(mut self) -> io::Result<S> {
         self.writer.write_all(b"0\r\n\r\n")?;
@@ -38,9 +34,6 @@ impl<S> ChunkWriter<S> where S: io::Write {
     }
 }
 
-
-
-
 /// Abstraction for serializing payloads.
 ///
 /// `BodyWriter::Raw` does nothing special: It transfers writes
@@ -54,7 +47,7 @@ impl<S> ChunkWriter<S> where S: io::Write {
 /// zero-sized trailing chunk.
 pub enum BodyWriter<S: io::Write> {
     Raw(S),
-    Chunked(ChunkWriter<S>)
+    Chunked(ChunkWriter<S>),
 }
 
 impl<S: io::Write> BodyWriter<S> {
@@ -87,7 +80,6 @@ impl<S: io::Write> io::Write for BodyWriter<S> {
     }
 }
 
-
 fn unparse_token(token: &[u8]) -> Vec<u8> {
     assert!(token.len() > 0);
     assert!(token.iter().all(|b| character_types::is_token_byte(*b)));
@@ -108,20 +100,20 @@ fn unparse_version(version: http::Version) -> Vec<u8> {
     use http::Version;
 
     let mut bytes = b"HTTP/".to_vec();
-    bytes.extend(
-        match version {
-            Version::HTTP_09 => b"0.9",
-            Version::HTTP_10 => b"1.0",
-            Version::HTTP_11 => b"1.1",
-            Version::HTTP_2 => b"2.0",
-        }
-    );
+    bytes.extend(match version {
+        Version::HTTP_09 => b"0.9",
+        Version::HTTP_10 => b"1.0",
+        Version::HTTP_11 => b"1.1",
+        Version::HTTP_2 => b"2.0",
+    });
     bytes
 }
 
 fn unparse_header_value(value: &[u8]) -> Vec<u8> {
     assert!(value.len() > 0);
-    assert!(value.iter().all(|b| character_types::is_header_value_byte(*b)));
+    assert!(value
+        .iter()
+        .all(|b| character_types::is_header_value_byte(*b)));
     value.to_vec()
 }
 
@@ -174,7 +166,6 @@ pub fn unparse_response_head_parts(parts: &http::response::Parts) -> Vec<u8> {
     v
 }
 
-
 /// Serializes a request line and headers.
 ///
 /// Same as `unparse_request_head_parts` but works with a `Request`.
@@ -207,25 +198,21 @@ pub fn unparse_response_head<B>(response: &http::Response<B>) -> Vec<u8> {
     v
 }
 
-
 /// Serializes an HTTP request into a stream.
 ///
 /// The request is written to the given output stream. The request body
 /// must be written by the caller into the returned `BodyWriter`.
 /// The body of the `request` parameter is ignored and unused.
 pub fn unparse_request<B, O: io::Write>(
-        request: &http::Request<B>,
-        mut output: O
-    ) -> io::Result<BodyWriter<O>> {
+    request: &http::Request<B>,
+    mut output: O,
+) -> io::Result<BodyWriter<O>> {
     let te = parse_headers::parse_transfer_encoding(request.headers(), request.version()).unwrap();
     output.write_all(&unparse_request_head(request))?;
-    let body_writer =
-        match te {
-            TransferEncoding::None =>
-                BodyWriter::Raw(output),
-            TransferEncoding::Chunked =>
-                BodyWriter::Chunked(ChunkWriter { writer: output })
-        };
+    let body_writer = match te {
+        TransferEncoding::None => BodyWriter::Raw(output),
+        TransferEncoding::Chunked => BodyWriter::Chunked(ChunkWriter { writer: output }),
+    };
 
     Ok(body_writer)
 }
@@ -236,22 +223,19 @@ pub fn unparse_request<B, O: io::Write>(
 /// must be written by the caller into the returned `BodyWriter`.
 /// The body of the `response` parameter is ignored and unused.
 pub fn unparse_response<B, O: io::Write>(
-        response: &http::Response<B>,
-        mut output: O
-    ) -> io::Result<BodyWriter<O>> {
-    let te = parse_headers::parse_transfer_encoding(response.headers(), response.version()).unwrap();
+    response: &http::Response<B>,
+    mut output: O,
+) -> io::Result<BodyWriter<O>> {
+    let te =
+        parse_headers::parse_transfer_encoding(response.headers(), response.version()).unwrap();
     output.write_all(&unparse_response_head(response))?;
-    let body_writer =
-        match te {
-            TransferEncoding::None =>
-                BodyWriter::Raw(output),
-            TransferEncoding::Chunked =>
-                BodyWriter::Chunked(ChunkWriter { writer: output })
-        };
+    let body_writer = match te {
+        TransferEncoding::None => BodyWriter::Raw(output),
+        TransferEncoding::Chunked => BodyWriter::Chunked(ChunkWriter { writer: output }),
+    };
 
     Ok(body_writer)
 }
-
 
 /// Serializes an HTTP request into a byte array.
 ///
@@ -276,4 +260,3 @@ pub fn unparse_response_sync(response: &http::Response<Vec<u8>>) -> io::Result<V
     body_writer.flush()?;
     Ok(body_writer.into_inner()?.into_inner())
 }
-

@@ -1,4 +1,3 @@
-
 use io;
 
 /// Errors that can be raised during HTTP parsing.
@@ -17,7 +16,7 @@ pub enum Error {
     ContentLengthAndTransferEncoding,
     MultipleHosts,
     MissingHost,
-    InvalidHost
+    InvalidHost,
 }
 
 impl Error {
@@ -35,7 +34,9 @@ impl Error {
 impl PartialEq<Error> for Error {
     fn eq(&self, other: &Error) -> bool {
         macro_rules! d {
-            ($n:ident) => {(Error::$n, Error::$n)};
+            ($n:ident) => {
+                (Error::$n, Error::$n)
+            };
         }
 
         match (self, other) {
@@ -59,5 +60,3 @@ impl PartialEq<Error> for Error {
         }
     }
 }
-
-

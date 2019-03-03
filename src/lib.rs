@@ -32,26 +32,15 @@
 
 extern crate http;
 
-use std::io;
 use http::{
-    Method,
-    Version,
-    Uri,
-    HeaderMap,
-    Request,
-    Response,
-    header::{
-        HeaderName,
-        HeaderValue,
-    },
+    header::{HeaderName, HeaderValue},
+    HeaderMap, Method, Request, Response, Uri, Version,
 };
+use std::io;
 
 mod character_types;
 use character_types::{
-    is_whitespace_byte,
-    is_token_byte,
-    is_header_value_byte,
-    is_status_reason_byte,
+    is_header_value_byte, is_status_reason_byte, is_token_byte, is_whitespace_byte,
 };
 
 mod error;
@@ -61,27 +50,17 @@ mod parse_headers;
 
 mod single_byte_buffered_reader;
 use single_byte_buffered_reader::{
-    SingleByteBufferedReader as Reader,
-    SingleByteBufferedReaderImpl as ReaderImpl,
+    SingleByteBufferedReader as Reader, SingleByteBufferedReaderImpl as ReaderImpl,
 };
 
 mod types;
-use types::{
-    TransferEncoding
-};
+use types::TransferEncoding;
 
 mod unparse;
 pub use unparse::{
-    unparse_request,
-    unparse_request_sync,
-    unparse_request_head_parts,
-    unparse_request_head,
-    unparse_response,
-    unparse_response_sync,
-    unparse_response_head_parts,
-    unparse_response_head,
+    unparse_request, unparse_request_head, unparse_request_head_parts, unparse_request_sync,
+    unparse_response, unparse_response_head, unparse_response_head_parts, unparse_response_sync,
 };
-
 
 enum ChunkHeaderError {
     SizeTooLarge,
@@ -91,7 +70,6 @@ enum ChunkHeaderError {
     IO(io::Error),
 }
 
-
 /// Parser configuration.
 ///
 /// Mostly used for limiting lengths (and prevents DoS attacks).
@@ -99,7 +77,6 @@ enum ChunkHeaderError {
 /// you are doing.
 #[derive(Copy, Clone)]
 pub struct Config {
-
     /// Used for header names and other things (see the definition of `token` in the spec)
     pub max_token_length: usize,
 
@@ -131,7 +108,6 @@ impl Config {
         max_chunk_ext_length: 8 * 1024,
     };
 }
-
 
 /// Abstraction for parsing streamed payloads.
 ///
@@ -165,12 +141,15 @@ impl<S: io::Read> BodyReader<S> {
     pub fn into_inner(self) -> S {
         match self {
             BodyReader::Limited(take) => {
-                assert_eq!(take.limit(), 0, "`into_inner` cannot be called if the message body is not entirely consumed");
+                assert_eq!(
+                    take.limit(),
+                    0,
+                    "`into_inner` cannot be called if the message body is not entirely consumed"
+                );
                 take.into_inner()
-            },
+            }
 
-            BodyReader::Chunked(cr) =>
-                cr.into_inner(), // does the right checks itself
+            BodyReader::Chunked(cr) => cr.into_inner(), // does the right checks itself
 
             BodyReader::Unlimited(mut stream) => {
                 let mut dummy_buffer = [0u8];
@@ -195,7 +174,6 @@ impl<S: io::Read> io::Read for BodyReader<S> {
     }
 }
 
-
 /// Either an HTTP body or nothing.
 ///
 /// This is pretty much like `Option` except both variants wrap
@@ -217,7 +195,7 @@ impl<S: io::Read> Body<S> {
     pub fn into_inner(self) -> S {
         match self {
             Body::Some(br) => br.into_inner(),
-            Body::None(stream) => stream
+            Body::None(stream) => stream,
         }
     }
 }
@@ -255,13 +233,13 @@ fn skip_optional_whitespace(reader: &mut Reader, max_length: usize) -> Result<()
     let mut i = 0;
     loop {
         if i >= max_length {
-            return Err(Error::Syntax)
+            return Err(Error::Syntax);
         }
 
         let byte = read_byte(reader)?;
         if !is_whitespace_byte(byte) {
             reader.unread_byte(byte);
-            return Ok(())
+            return Ok(());
         }
 
         i += 1;
@@ -272,16 +250,16 @@ fn parse_token(reader: &mut Reader, config: &Config) -> Result<Vec<u8>, Error> {
     let mut token: Vec<u8> = Vec::with_capacity(16);
     loop {
         if token.len() > config.max_token_length {
-            return Err(Error::Syntax)
+            return Err(Error::Syntax);
         }
 
         let byte = read_byte(reader)?;
         if !is_token_byte(byte) {
             reader.unread_byte(byte);
             if token.len() == 0 {
-                return Err(Error::Syntax)
+                return Err(Error::Syntax);
             }
-            return Ok(token)
+            return Ok(token);
         }
         token.push(byte)
     }
@@ -291,22 +269,22 @@ fn parse_chunk_size(reader: &mut Reader, config: &Config) -> Result<usize, Chunk
     let mut digits = vec![0u8; 0];
     loop {
         if digits.len() > 8 {
-            return Err(ChunkHeaderError::SizeTooLarge)
+            return Err(ChunkHeaderError::SizeTooLarge);
         }
 
-        let byte = reader.read_byte()
+        let byte = reader
+            .read_byte()
             .map_err(|ioe| ChunkHeaderError::IO(ioe))?;
         if !byte.is_ascii_hexdigit() {
             reader.unread_byte(byte);
-            break
+            break;
         }
         digits.push(byte)
     }
 
-    let digits_str = std::str::from_utf8(&digits[..])
-        .map_err(|_| ChunkHeaderError::InvalidSize)?;
-    let size: u32 = u32::from_str_radix(digits_str, 16)
-        .map_err(|_| ChunkHeaderError::InvalidSize)?;
+    let digits_str = std::str::from_utf8(&digits[..]).map_err(|_| ChunkHeaderError::InvalidSize)?;
+    let size: u32 =
+        u32::from_str_radix(digits_str, 16).map_err(|_| ChunkHeaderError::InvalidSize)?;
 
     if (size as usize) > config.max_chunk_length {
         Err(ChunkHeaderError::SizeTooLarge)
@@ -319,13 +297,14 @@ fn skip_chunk_ext(reader: &mut Reader, config: &Config) -> Result<(), ChunkHeade
     let mut ext_length = 0;
     loop {
         if ext_length > config.max_chunk_ext_length {
-            return Err(ChunkHeaderError::ExtTooLong)
+            return Err(ChunkHeaderError::ExtTooLong);
         }
-        let byte = reader.read_byte()
+        let byte = reader
+            .read_byte()
             .map_err(|ioe| ChunkHeaderError::IO(ioe))?;
         if byte == b'\r' {
             reader.unread_byte(byte);
-            break
+            break;
         }
         ext_length += 1
     }
@@ -348,7 +327,10 @@ pub struct ChunkReader<S: io::Read> {
     reader: ReaderImpl<S>,
 }
 
-impl<S> ChunkReader<S> where S: io::Read {
+impl<S> ChunkReader<S>
+where
+    S: io::Read,
+{
     /// Destroys this `ChunkReader` and returns the underlying
     /// transport stream.
     ///
@@ -373,34 +355,42 @@ fn skip_chunked_trailer_part(reader: &mut Reader, config: &Config) -> Result<(),
     Ok(())
 }
 
-impl<S> io::Read for ChunkReader<S> where S: io::Read {
+impl<S> io::Read for ChunkReader<S>
+where
+    S: io::Read,
+{
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         use io::ErrorKind::InvalidData;
 
         if self.remaining_chunk_size == 0 {
             if !self.begin {
-                expect(&mut self.reader, b"\r\n")
-                    .map_err(|_| io::Error::new(InvalidData, "expected CRLF between HTTP chunks"))?;
+                expect(&mut self.reader, b"\r\n").map_err(|_| {
+                    io::Error::new(InvalidData, "expected CRLF between HTTP chunks")
+                })?;
             }
 
-            self.remaining_chunk_size =
-                parse_chunk_header(&mut self.reader, &self.config)
-                    .map_err(|e|
-                        match e {
-                            ChunkHeaderError::SizeTooLarge => io::Error::new(InvalidData, "invalid HTTP chunk header"),
-                            ChunkHeaderError::ExtTooLong => io::Error::new(InvalidData, "HTTP chunk extension too long"),
-                            ChunkHeaderError::InvalidSize => io::Error::new(InvalidData, "invalid HTTP chunk size"),
-                            ChunkHeaderError::Syntax => io::Error::new(InvalidData, "HTTP chunk syntax error"),
-                            ChunkHeaderError::IO(ioe) => ioe,
-                        }
-                    )?;
+            self.remaining_chunk_size = parse_chunk_header(&mut self.reader, &self.config)
+                .map_err(|e| match e {
+                    ChunkHeaderError::SizeTooLarge => {
+                        io::Error::new(InvalidData, "invalid HTTP chunk header")
+                    }
+                    ChunkHeaderError::ExtTooLong => {
+                        io::Error::new(InvalidData, "HTTP chunk extension too long")
+                    }
+                    ChunkHeaderError::InvalidSize => {
+                        io::Error::new(InvalidData, "invalid HTTP chunk size")
+                    }
+                    ChunkHeaderError::Syntax => {
+                        io::Error::new(InvalidData, "HTTP chunk syntax error")
+                    }
+                    ChunkHeaderError::IO(ioe) => ioe,
+                })?;
 
             if self.remaining_chunk_size == 0 {
-                skip_chunked_trailer_part(&mut self.reader, &self.config)
-                    .map_err(|e| match e {
-                        Error::IO(ioe) => ioe,
-                        _ => io::Error::new(InvalidData, "invalid trailing headers after HTTP chunks"),
-                    })?;
+                skip_chunked_trailer_part(&mut self.reader, &self.config).map_err(|e| match e {
+                    Error::IO(ioe) => ioe,
+                    _ => io::Error::new(InvalidData, "invalid trailing headers after HTTP chunks"),
+                })?;
 
                 self.reached_eof = true;
                 return Ok(0);
@@ -409,19 +399,17 @@ impl<S> io::Read for ChunkReader<S> where S: io::Read {
             self.begin = false
         }
 
-        let chunk_buf =
-            if buf.len() > self.remaining_chunk_size {
-                &mut buf[..self.remaining_chunk_size]
-            } else {
-                &mut buf[..]
-            };
+        let chunk_buf = if buf.len() > self.remaining_chunk_size {
+            &mut buf[..self.remaining_chunk_size]
+        } else {
+            &mut buf[..]
+        };
 
         let len = self.reader.read_bytes_partial(chunk_buf)?;
         self.remaining_chunk_size -= len;
         Ok(len)
     }
 }
-
 
 fn parse_method(reader: &mut Reader, config: &Config) -> Result<Method, Error> {
     let token = parse_token(reader, config)?;
@@ -437,9 +425,9 @@ fn parse_request_target_raw(reader: &mut Reader, config: &Config) -> Result<Vec<
         if byte == b' ' {
             reader.unread_byte(byte);
             if req_target.len() == 0 {
-                return Err(Error::Syntax)
+                return Err(Error::Syntax);
             }
-            return Ok(req_target)
+            return Ok(req_target);
         }
         req_target.push(byte)
     }
@@ -458,7 +446,7 @@ fn parse_version(reader: &mut Reader) -> Result<Version, Error> {
     expect(reader, b".")?;
     let min = read_byte(reader)?;
     if !(maj.is_ascii_digit() && min.is_ascii_digit()) {
-       return Err(Error::Syntax)
+        return Err(Error::Syntax);
     }
 
     match (maj, min) {
@@ -469,19 +457,17 @@ fn parse_version(reader: &mut Reader) -> Result<Version, Error> {
 }
 
 fn parse_status_code(reader: &mut Reader) -> Result<http::StatusCode, Error> {
-    let bytes: Vec<u8> =
-        (0..3)
-        .try_fold(
-            Vec::with_capacity(3),
-            |mut acc, _| -> Result<Vec<u8>, Error> {
-                let b = read_byte(reader)?;
-                if !b.is_ascii_digit() {
-                    return Err(Error::Syntax)
-                }
-                acc.push(b);
-                Ok(acc)
+    let bytes: Vec<u8> = (0..3).try_fold(
+        Vec::with_capacity(3),
+        |mut acc, _| -> Result<Vec<u8>, Error> {
+            let b = read_byte(reader)?;
+            if !b.is_ascii_digit() {
+                return Err(Error::Syntax);
             }
-        )?;
+            acc.push(b);
+            Ok(acc)
+        },
+    )?;
 
     let status_code = http::StatusCode::from_bytes(&bytes).map_err(|_| Error::Syntax)?;
 
@@ -493,16 +479,16 @@ fn skip_optional_status_reason(reader: &mut Reader) -> Result<(), Error> {
     let mut i = 0;
     loop {
         if i >= max_length {
-            return Err(Error::Syntax)
+            return Err(Error::Syntax);
         }
 
         let byte = read_byte(reader)?;
         if byte == b'\r' {
             reader.unread_byte(byte);
-            return Ok(())
+            return Ok(());
         }
         if !is_status_reason_byte(byte) {
-            return Err(Error::Syntax)
+            return Err(Error::Syntax);
         }
 
         i += 1;
@@ -513,23 +499,24 @@ fn parse_header_value(reader: &mut Reader, config: &Config) -> Result<HeaderValu
     let mut content = Vec::with_capacity(32);
     loop {
         if content.len() > config.max_header_value_length {
-            return Err(Error::Syntax)
+            return Err(Error::Syntax);
         }
 
         let byte = read_byte(reader)?;
         if !is_header_value_byte(byte) {
             reader.unread_byte(byte);
-            let hv = HeaderValue::from_bytes(&content)
-                .map_err(|_| Error::Syntax)?;
-            return Ok(hv)
+            let hv = HeaderValue::from_bytes(&content).map_err(|_| Error::Syntax)?;
+            return Ok(hv);
         }
         content.push(byte)
     }
 }
 
-fn parse_header_field(reader: &mut Reader, config: &Config) -> Result<(HeaderName, HeaderValue), Error> {
-    let name = HeaderName::from_bytes(&parse_token(reader, config)?)
-        .map_err(|_| Error::Syntax)?;
+fn parse_header_field(
+    reader: &mut Reader,
+    config: &Config,
+) -> Result<(HeaderName, HeaderValue), Error> {
+    let name = HeaderName::from_bytes(&parse_token(reader, config)?).map_err(|_| Error::Syntax)?;
     expect(reader, b":")?;
     skip_optional_whitespace(reader, config.max_token_length)?;
     let value = parse_header_value(reader, config)?;
@@ -538,7 +525,7 @@ fn parse_header_field(reader: &mut Reader, config: &Config) -> Result<(HeaderNam
 
 fn check_host_header(host_source: &HeaderValue, uri: &Uri) -> Result<(), Error> {
     if host_source.as_bytes().len() == 0 {
-        return Ok(())
+        return Ok(());
     }
 
     if host_source.as_bytes().contains(&b',') {
@@ -549,9 +536,10 @@ fn check_host_header(host_source: &HeaderValue, uri: &Uri) -> Result<(), Error> 
     let host_uri: Uri = host_str.parse().map_err(|_| Error::InvalidHost)?;
     let host_authority = host_uri.authority_part().ok_or(Error::InvalidHost)?;
     if let Some(target_authority) = uri.authority_part() {
-        if target_authority.host() != host_authority.host() ||
-            target_authority.port_part() != host_authority.port_part() {
-            return Err(Error::InvalidHost)
+        if target_authority.host() != host_authority.host()
+            || target_authority.port_part() != host_authority.port_part()
+        {
+            return Err(Error::InvalidHost);
         }
     }
 
@@ -564,39 +552,35 @@ fn check_host_header(host_source: &HeaderValue, uri: &Uri) -> Result<(), Error> 
 fn check_headers(
     headers: &HeaderMap,
     maybe_uri: Option<&Uri>,
-    version: Version
+    version: Version,
 ) -> Result<(), Error> {
     if headers.get_all("Content-Length").iter().count() > 1 {
-        return Err(Error::MultipleContentLengths)
+        return Err(Error::MultipleContentLengths);
     }
     if headers.contains_key("Content-Length") && headers.contains_key("Transfer-Encoding") {
-        return Err(Error::ContentLengthAndTransferEncoding)
+        return Err(Error::ContentLengthAndTransferEncoding);
     }
 
     if headers.get_all("Host").iter().count() > 1 {
-        return Err(Error::MultipleHosts)
+        return Err(Error::MultipleHosts);
     }
 
     if let Some(uri) = maybe_uri {
         match headers.get("Host") {
-            None =>
+            None => {
                 if version != Version::HTTP_10 {
-                    return Err(Error::MissingHost)
-                },
+                    return Err(Error::MissingHost);
+                }
+            }
 
-            Some(host_source) =>
-                check_host_header(host_source, uri)?,
+            Some(host_source) => check_host_header(host_source, uri)?,
         }
     }
 
     Ok(())
 }
 
-fn parse_headers(
-        reader: &mut Reader,
-        config: &Config,
-    ) -> Result<HeaderMap, Error> {
-
+fn parse_headers(reader: &mut Reader, config: &Config) -> Result<HeaderMap, Error> {
     let mut headers = HeaderMap::new();
 
     let mut count: usize = 0;
@@ -604,15 +588,15 @@ fn parse_headers(
         match read_byte(reader)? {
             b'\r' => {
                 expect(reader, b"\n")?;
-                break
-            },
+                break;
+            }
             b => {
                 reader.unread_byte(b);
             }
         }
 
         if count > config.max_header_count {
-            return Err(Error::TooManyHeaders)
+            return Err(Error::TooManyHeaders);
         }
 
         let (name, value) = parse_header_field(reader, config)?;
@@ -626,33 +610,34 @@ fn parse_headers(
 }
 
 fn parse_body<S: io::Read>(
-        reader: ReaderImpl<S>,
-        config: &Config,
-        headers: &HeaderMap,
-        version: Version,
-        is_request: bool,
-    ) -> Result<Body<S>, Error> {
-
+    reader: ReaderImpl<S>,
+    config: &Config,
+    headers: &HeaderMap,
+    version: Version,
+    is_request: bool,
+) -> Result<Body<S>, Error> {
     // see https://tools.ietf.org/html/rfc7230#section-3.3.3
 
     let body = match parse_headers::parse_transfer_encoding(headers, version)? {
         TransferEncoding::None => {
             match parse_headers::parse_content_length(headers)? {
-                None =>
+                None => {
                     if is_request {
                         Body::None(reader.into_inner()) // (6)
                     } else {
                         Body::Some(BodyReader::Unlimited(reader.into_inner())) // (7)
-                    },
+                    }
+                }
                 Some(len) => {
                     let take = reader.into_inner().take(len); // (5)
                     Body::Some(BodyReader::Limited(take))
-                },
+                }
             }
-        },
+        }
 
         TransferEncoding::Chunked => {
-            let mut cr: ChunkReader<S> = ChunkReader { // (3)
+            let mut cr: ChunkReader<S> = ChunkReader {
+                // (3)
                 config: config.clone(),
                 reader,
                 begin: true,
@@ -660,7 +645,7 @@ fn parse_body<S: io::Read>(
                 reached_eof: false,
             };
             Body::Some(BodyReader::Chunked(cr))
-        },
+        }
     };
 
     Ok(body)
@@ -691,15 +676,19 @@ pub fn parse_request_head<S: io::Read>(stream: S, config: &Config) -> Result<Req
     Ok(parse_request_head_impl(&mut reader, config)?.map(|_| reader.into_inner()))
 }
 
-fn parse_request_impl<S: io::Read>(mut reader: ReaderImpl<S>, config: &Config) ->
-        Result<Request<Body<S>>, Error> {
+fn parse_request_impl<S: io::Read>(
+    mut reader: ReaderImpl<S>,
+    config: &Config,
+) -> Result<Request<Body<S>>, Error> {
     let request = parse_request_head_impl(&mut reader, config)?;
     let body = parse_body(reader, config, request.headers(), request.version(), true)?;
     Ok(request.map(|_| body))
 }
 
-fn parse_response_impl<S: io::Read>(mut reader: ReaderImpl<S>, config: &Config) ->
-        Result<Response<Body<S>>, Error> {
+fn parse_response_impl<S: io::Read>(
+    mut reader: ReaderImpl<S>,
+    config: &Config,
+) -> Result<Response<Body<S>>, Error> {
     let version = parse_version(&mut reader)?;
     expect(&mut reader, b" ")?;
     let status_code = parse_status_code(&mut reader)?;
@@ -719,14 +708,12 @@ fn parse_response_impl<S: io::Read>(mut reader: ReaderImpl<S>, config: &Config) 
     Ok(res)
 }
 
-
 /// Parses an HTTP request.
 ///
 /// This function takes ownership of the given transport stream,
 /// but you can recover it by calling `into_inner` on the returned
 /// `Body`.
-pub fn parse_request<S: io::Read>(stream: S, config: &Config) ->
-        Result<Request<Body<S>>, Error> {
+pub fn parse_request<S: io::Read>(stream: S, config: &Config) -> Result<Request<Body<S>>, Error> {
     let reader = ReaderImpl::new(stream);
     parse_request_impl(reader, config)
 }
@@ -736,13 +723,10 @@ pub fn parse_request<S: io::Read>(stream: S, config: &Config) ->
 /// This function takes ownership of the given transport stream,
 /// but you can recover it by calling `into_inner` on the returned
 /// `Body`.
-pub fn parse_response<S: io::Read>(stream: S, config: &Config) ->
-        Result<Response<Body<S>>, Error> {
+pub fn parse_response<S: io::Read>(stream: S, config: &Config) -> Result<Response<Body<S>>, Error> {
     let reader = ReaderImpl::new(stream);
     parse_response_impl(reader, config)
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -753,10 +737,7 @@ mod tests {
 
     const C: &Config = &Config::DEFAULT;
 
-    fn with_reader_impl<T>(
-        bytes: &[u8],
-        fun: &Fn(ReaderImpl<TestStream>) -> T
-    ) -> T {
+    fn with_reader_impl<T>(bytes: &[u8], fun: &Fn(ReaderImpl<TestStream>) -> T) -> T {
         let vec = bytes.to_vec();
         let cursor = io::Cursor::new(vec);
         let reader = ReaderImpl::new(cursor);
@@ -778,14 +759,18 @@ mod tests {
         Ok((payload, body.into_inner()))
     }
 
-    fn parse_test_request(source: &[u8]) -> Result<(http::request::Parts, Vec<u8>, TestStream), Error> {
+    fn parse_test_request(
+        source: &[u8],
+    ) -> Result<(http::request::Parts, Vec<u8>, TestStream), Error> {
         let req = with_reader_impl(source, &|r| parse_request_impl(r, C))?;
         let (parts, body) = req.into_parts();
         let (payload, next_stream) = read_body_stream(body)?;
         Ok((parts, payload, next_stream))
     }
 
-    fn parse_test_response(source: &[u8]) -> Result<(http::response::Parts, Vec<u8>, TestStream), Error> {
+    fn parse_test_response(
+        source: &[u8],
+    ) -> Result<(http::response::Parts, Vec<u8>, TestStream), Error> {
         let res = with_reader_impl(source, &|r| parse_response_impl(r, C))?;
         let (parts, body) = res.into_parts();
         let (payload, next_stream) = read_body_stream(body)?;
@@ -793,10 +778,7 @@ mod tests {
     }
 
     fn concat(bytes_list: Vec<&[u8]>) -> Vec<u8> {
-        bytes_list
-            .iter()
-            .flat_map(|b| b.to_vec())
-            .collect()
+        bytes_list.iter().flat_map(|b| b.to_vec()).collect()
     }
 
     fn concat_lines(bytes_list: Vec<&[u8]>) -> Vec<u8> {
@@ -805,7 +787,6 @@ mod tests {
             .flat_map(|b| concat(vec![b, b"\r\n"]))
             .collect()
     }
-
 
     #[test]
     fn version() {
@@ -817,17 +798,11 @@ mod tests {
         assert!(res.is_err());
         assert_eq!(res.unwrap_err(), Error::UnsupportedVersion);
 
-        let (v_res, d_res) = with_reader(
-            b"HTTP/1.0$",
-            &|r| (parse_version(r), expect(r, b"$"))
-        );
+        let (v_res, d_res) = with_reader(b"HTTP/1.0$", &|r| (parse_version(r), expect(r, b"$")));
         assert_eq!(v_res.unwrap(), Version::HTTP_10);
         assert!(d_res.is_ok());
 
-        let res = with_reader(
-            b"HTTP/1.1",
-            &parse_version
-        );
+        let res = with_reader(b"HTTP/1.1", &parse_version);
         assert_eq!(res.unwrap(), Version::HTTP_11);
     }
 
@@ -859,7 +834,7 @@ mod tests {
             b"Host: example.com",
             b"Content-Length: 4",
             b"",
-            b"1234"
+            b"1234",
         ]);
 
         let req = with_reader_impl(&source, &|r| parse_request_impl(r, C)).unwrap();
@@ -918,7 +893,7 @@ mod tests {
             b"gzip",
             b"compress",
             b"deflate",
-            b"foo"
+            b"foo",
         ];
         for te in tes {
             let source = concat_lines(vec![
@@ -950,10 +925,7 @@ mod tests {
         let (_parts, body, mut next) = parse_test_request(&source).unwrap();
         assert_eq!(body.len(), 0);
 
-        assert_eq!(
-            b"ignored\r\n".to_vec(),
-            read_to_end(&mut next).unwrap()
-        );
+        assert_eq!(b"ignored\r\n".to_vec(), read_to_end(&mut next).unwrap());
 
         let source = concat_lines(vec![
             b"GET /foo HTTP/1.1",
@@ -984,7 +956,7 @@ mod tests {
             Error::IO(ioe) => {
                 assert_eq!(ioe.kind(), io::ErrorKind::InvalidData);
                 assert_eq!(ioe.to_string(), "invalid HTTP chunk size");
-            },
+            }
             _ => panic!(),
         }
 
@@ -1002,7 +974,7 @@ mod tests {
             Error::IO(ioe) => {
                 assert_eq!(ioe.kind(), io::ErrorKind::InvalidData);
                 assert_eq!(ioe.to_string(), "expected CRLF between HTTP chunks");
-            },
+            }
             _ => panic!(),
         }
 
@@ -1018,8 +990,11 @@ mod tests {
         match parse_test_request(&source).unwrap_err() {
             Error::IO(ioe) => {
                 assert_eq!(ioe.kind(), io::ErrorKind::InvalidData);
-                assert_eq!(ioe.to_string(), "invalid trailing headers after HTTP chunks");
-            },
+                assert_eq!(
+                    ioe.to_string(),
+                    "invalid trailing headers after HTTP chunks"
+                );
+            }
             _ => panic!(),
         }
 
@@ -1036,7 +1011,7 @@ mod tests {
             Error::IO(ioe) => {
                 assert_eq!(ioe.kind(), io::ErrorKind::InvalidData);
                 assert_eq!(ioe.to_string(), "invalid HTTP chunk size");
-            },
+            }
             _ => panic!(),
         }
 
@@ -1067,7 +1042,7 @@ mod tests {
             Error::IO(ioe) => {
                 assert_eq!(ioe.kind(), io::ErrorKind::InvalidData);
                 assert_eq!(ioe.to_string(), "invalid HTTP chunk header");
-            },
+            }
             _ => panic!(),
         }
     }
@@ -1190,10 +1165,7 @@ mod tests {
 
         let (_parts, body, mut next) = parse_test_request(&source).unwrap();
         assert_eq!(body.len(), 0);
-        assert_eq!(
-            b"hello\r\n\r\n".to_vec(),
-            read_to_end(&mut next).unwrap()
-        );
+        assert_eq!(b"hello\r\n\r\n".to_vec(), read_to_end(&mut next).unwrap());
 
         let source = concat_lines(vec![
             b"POST /foo HTTP/1.1",
@@ -1232,18 +1204,12 @@ mod tests {
 
     #[test]
     fn http_09_and_http_20_are_not_supported() {
-        let source = concat_lines(vec![
-            b"GET /foo HTTP/0.9",
-            b"",
-        ]);
+        let source = concat_lines(vec![b"GET /foo HTTP/0.9", b""]);
 
         let err = parse_test_request(&source).unwrap_err();
         assert_eq!(err, Error::UnsupportedVersion);
 
-        let source = concat_lines(vec![
-            b"GET /foo HTTP/2.0",
-            b"",
-        ]);
+        let source = concat_lines(vec![b"GET /foo HTTP/2.0", b""]);
 
         let err = parse_test_request(&source).unwrap_err();
         assert_eq!(err, Error::UnsupportedVersion);
@@ -1322,17 +1288,11 @@ mod tests {
 
     #[test]
     fn requires_host_header_in_http_11() {
-        let source = concat_lines(vec![
-            b"GET /foo HTTP/1.1",
-            b""
-        ]);
+        let source = concat_lines(vec![b"GET /foo HTTP/1.1", b""]);
         let err = parse_test_request(&source).unwrap_err();
         assert_eq!(err, Error::MissingHost);
 
-        let source = concat_lines(vec![
-            b"GET /foo HTTP/1.0",
-            b""
-        ]);
+        let source = concat_lines(vec![b"GET /foo HTTP/1.0", b""]);
         let _ = parse_test_request(&source).unwrap();
     }
 
@@ -1342,7 +1302,7 @@ mod tests {
             b"GET /foo HTTP/1.0",
             b"Host: foo.example.com",
             b"Host: foo.example.com",
-            b""
+            b"",
         ]);
         let err = parse_test_request(&source).unwrap_err();
         assert_eq!(err, Error::MultipleHosts);
@@ -1350,7 +1310,7 @@ mod tests {
         let source = concat_lines(vec![
             b"GET /foo HTTP/1.0",
             b"Host: foo.example.com, foo.example.com",
-            b""
+            b"",
         ]);
         let err = parse_test_request(&source).unwrap_err();
         assert_eq!(err, Error::InvalidHost);
@@ -1390,7 +1350,6 @@ mod tests {
         let err = parse_test_request(&source).unwrap_err();
         assert_eq!(err, Error::InvalidHost);
 
-
         let source = concat_lines(vec![
             b"GET http://antoine@example.com/foo HTTP/1.1",
             b"Host: example.com",
@@ -1401,22 +1360,14 @@ mod tests {
 
     #[test]
     fn allows_empty_host_headers() {
-        let source = concat_lines(vec![
-            b"GET /foo HTTP/1.1",
-            b"Host:          ",
-            b"",
-        ]);
+        let source = concat_lines(vec![b"GET /foo HTTP/1.1", b"Host:          ", b""]);
         let (parts, _body, _next_stream) = parse_test_request(&source).unwrap();
         assert_eq!(parts.headers.get("host").unwrap().as_bytes(), b"");
     }
 
     #[test]
     fn method_names_are_case_sensitive() {
-        let source = concat_lines(vec![
-            b"get /foo HTTP/1.0",
-            b"Host: example.com",
-            b"",
-        ]);
+        let source = concat_lines(vec![b"get /foo HTTP/1.0", b"Host: example.com", b""]);
 
         let (parts, _body, _next_stream) = parse_test_request(&source).unwrap();
         assert_ne!(parts.method, Method::GET);
@@ -1481,4 +1432,3 @@ mod tests {
         // TODO
     }
 }
-
