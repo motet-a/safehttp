@@ -48,3 +48,10 @@ before upgrading. So HTTP/1.1 parsing is required in anyway.
 HTTP/3 seems to be widly different than HTTP/2 and HTTP/1, so it’s probably
 better to support it in a different library.
 
+## TODO
+
+  - Write more tests. There are tests but more is always better.
+
+  - Try to rewrite the parser with nom. The current implementation of the
+    lookahead isn’t particularly beautiful.
+
