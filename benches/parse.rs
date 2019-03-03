@@ -22,7 +22,24 @@ fn concat_lines(bytes_list: Vec<&[u8]>) -> Vec<u8> {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    c.bench_function("parse request", |b| {
+    c.bench_function("parse short request", |b| {
+        let source = concat_lines(vec![
+            b"GET /foo/bar HTTP/1.1",
+            b"Host: example.com",
+            b"Content-Length: 8",
+            b"",
+            b"httphttp",
+        ]);
+
+        let config = &safehttp::Config::DEFAULT;
+
+        b.iter(move || {
+            let cursor = io::Cursor::new(&source);
+            safehttp::parse_request(cursor, config).unwrap();
+        })
+    });
+
+    c.bench_function("parse long request", |b| {
         let source = concat_lines(vec![
             b"POST /foo/bar?some=parameters#anchor HTTP/1.1",
             b"Host: example.com",
@@ -31,15 +48,16 @@ fn criterion_benchmark(c: &mut Criterion) {
             b"Content-Type: text/plain",
             b"Last-Modified: Thu, 02 Jun 2016 06:01:08 GMT",
             b"Server: rust_http_parser",
-            b"Set-Cookie: this is an HTTP parser the quick brown fox jumps over the lazy dog",
+            b"Set-Cookie: this is an HTTP parser the quick brown fox jumps over the lazy dog this is a really long cookie lorem ipsum dolor sit amet",
             b"Content-Length: 8",
             b"",
             b"httphttp",
         ]);
 
+        let config = &safehttp::Config::DEFAULT;
+
         b.iter(move || {
-            let mut cursor = io::Cursor::new(&source);
-            let config = &safehttp::Config::DEFAULT;
+            let cursor = io::Cursor::new(&source);
             safehttp::parse_request(cursor, config).unwrap();
         })
     });

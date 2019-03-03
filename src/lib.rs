@@ -231,7 +231,6 @@ impl<S: io::Read> io::Read for Body<S> {
     }
 }
 
-
 fn read_bytes(reader: &mut Reader, buffer: &mut [u8]) -> Result<(), Error> {
     reader.read_bytes(buffer).map_err(Error::from_io)
 }
@@ -270,7 +269,7 @@ fn skip_optional_whitespace(reader: &mut Reader, max_length: usize) -> Result<()
 }
 
 fn parse_token(reader: &mut Reader, config: &Config) -> Result<Vec<u8>, Error> {
-    let mut token = vec![0u8; 0];
+    let mut token: Vec<u8> = Vec::with_capacity(16);
     loop {
         if token.len() > config.max_token_length {
             return Err(Error::Syntax)
@@ -432,7 +431,7 @@ fn parse_method(reader: &mut Reader, config: &Config) -> Result<Method, Error> {
 fn parse_request_target_raw(reader: &mut Reader, config: &Config) -> Result<Vec<u8>, Error> {
     // The spec says it’s okay to parse until the next whitespace here
     // (see section 3.1.1 of RFC7230)
-    let mut req_target = vec![0u8; 0];
+    let mut req_target = Vec::with_capacity(32);
     while req_target.len() < config.max_request_target_length {
         let byte = read_byte(reader)?;
         if byte == b' ' {
@@ -511,7 +510,7 @@ fn skip_optional_status_reason(reader: &mut Reader) -> Result<(), Error> {
 }
 
 fn parse_header_value(reader: &mut Reader, config: &Config) -> Result<HeaderValue, Error> {
-    let mut content = vec![0u8; 0];
+    let mut content = Vec::with_capacity(32);
     loop {
         if content.len() > config.max_header_value_length {
             return Err(Error::Syntax)

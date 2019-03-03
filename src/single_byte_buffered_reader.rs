@@ -1,7 +1,14 @@
 use std::io;
 
-fn fill_with_zeroes(buffer: &mut [u8]) {
+/// Used to poison bytes that should not be read
+#[cfg(debug_assertions)]
+fn poison(buffer: &mut [u8]) {
     buffer.iter_mut().for_each(|c| *c = 0);
+}
+
+#[cfg(not(debug_assertions))]
+#[inline]
+fn poison(_buffer: &mut [u8]) {
 }
 
 
@@ -29,7 +36,7 @@ fn reliable_read_partial(stream: &mut io::Read, buffer: &mut [u8]) -> io::Result
             }
             Err(err) => {
                 if err.kind() != io::ErrorKind::Interrupted {
-                    fill_with_zeroes(buffer);
+                    poison(buffer);
                     return Err(err)
                 }
             }
@@ -53,7 +60,7 @@ pub trait SingleByteBufferedReader {
         if read_count == out_buffer.len() {
             return Ok(())
         }
-        fill_with_zeroes(out_buffer);
+        poison(out_buffer);
         Err(io::Error::new(io::ErrorKind::UnexpectedEof, "expected one byte"))
     }
 
@@ -86,7 +93,7 @@ impl<S> SingleByteBufferedReaderImpl<S> where S: io::Read {
 
 impl<S> SingleByteBufferedReader for SingleByteBufferedReaderImpl<S> where S: io::Read {
     fn read_bytes_partial(&mut self, out_buffer: &mut [u8]) -> io::Result<usize> {
-        fill_with_zeroes(out_buffer);
+        poison(out_buffer);
 
         if out_buffer.len() == 0 {
             return Ok(0)
