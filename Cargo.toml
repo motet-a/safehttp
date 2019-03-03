@@ -1,0 +1,15 @@
+[package]
+name = "safehttp"
+version = "0.1.0"
+authors = ["Antoine Motet <antoine.motet@gmail.com>"]
+
+[dependencies]
+http = "0.1"
+
+[dev-dependencies]
+criterion = "0.2"
+
+[[bench]]
+name = "parse"
+harness = false
+
