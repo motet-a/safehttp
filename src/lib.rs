@@ -21,14 +21,6 @@
 //! assert_eq!(request.uri(), "/index.html");
 //! assert_eq!(request.headers().get("host").unwrap(), "example.com");
 //! ```
-//!
-//! # Expansive example
-//!
-//! ```
-//!
-//!
-//! ```
-//!
 
 extern crate http;
 
@@ -209,15 +201,15 @@ impl<S: io::Read> io::Read for Body<S> {
     }
 }
 
-fn read_bytes(reader: &mut Reader, buffer: &mut [u8]) -> Result<(), Error> {
+fn read_bytes(reader: &mut dyn Reader, buffer: &mut [u8]) -> Result<(), Error> {
     reader.read_bytes(buffer).map_err(Error::from_io)
 }
 
-fn read_byte(reader: &mut Reader) -> Result<u8, Error> {
+fn read_byte(reader: &mut dyn Reader) -> Result<u8, Error> {
     reader.read_byte().map_err(Error::from_io)
 }
 
-fn expect(reader: &mut Reader, expected: &'static [u8]) -> Result<(), Error> {
+fn expect(reader: &mut dyn Reader, expected: &'static [u8]) -> Result<(), Error> {
     assert!(expected.len() > 0);
 
     let mut bytes = vec![0u8; expected.len()];
@@ -229,7 +221,7 @@ fn expect(reader: &mut Reader, expected: &'static [u8]) -> Result<(), Error> {
     }
 }
 
-fn skip_optional_whitespace(reader: &mut Reader, max_length: usize) -> Result<(), Error> {
+fn skip_optional_whitespace(reader: &mut dyn Reader, max_length: usize) -> Result<(), Error> {
     let mut i = 0;
     loop {
         if i >= max_length {
@@ -246,7 +238,7 @@ fn skip_optional_whitespace(reader: &mut Reader, max_length: usize) -> Result<()
     }
 }
 
-fn parse_token(reader: &mut Reader, config: &Config) -> Result<Vec<u8>, Error> {
+fn parse_token(reader: &mut dyn Reader, config: &Config) -> Result<Vec<u8>, Error> {
     let mut token: Vec<u8> = Vec::with_capacity(16);
     loop {
         if token.len() > config.max_token_length {
@@ -265,7 +257,7 @@ fn parse_token(reader: &mut Reader, config: &Config) -> Result<Vec<u8>, Error> {
     }
 }
 
-fn parse_chunk_size(reader: &mut Reader, config: &Config) -> Result<usize, ChunkHeaderError> {
+fn parse_chunk_size(reader: &mut dyn Reader, config: &Config) -> Result<usize, ChunkHeaderError> {
     let mut digits = vec![0u8; 0];
     loop {
         if digits.len() > 8 {
@@ -293,7 +285,7 @@ fn parse_chunk_size(reader: &mut Reader, config: &Config) -> Result<usize, Chunk
     }
 }
 
-fn skip_chunk_ext(reader: &mut Reader, config: &Config) -> Result<(), ChunkHeaderError> {
+fn skip_chunk_ext(reader: &mut dyn Reader, config: &Config) -> Result<(), ChunkHeaderError> {
     let mut ext_length = 0;
     loop {
         if ext_length > config.max_chunk_ext_length {
@@ -311,7 +303,7 @@ fn skip_chunk_ext(reader: &mut Reader, config: &Config) -> Result<(), ChunkHeade
     Ok(())
 }
 
-fn parse_chunk_header(reader: &mut Reader, config: &Config) -> Result<usize, ChunkHeaderError> {
+fn parse_chunk_header(reader: &mut dyn Reader, config: &Config) -> Result<usize, ChunkHeaderError> {
     let size = parse_chunk_size(reader, config)?;
     skip_chunk_ext(reader, config)?;
     expect(reader, b"\r\n").map_err(|_| ChunkHeaderError::Syntax)?;
@@ -344,7 +336,7 @@ where
     }
 }
 
-fn skip_chunked_trailer_part(reader: &mut Reader, config: &Config) -> Result<(), Error> {
+fn skip_chunked_trailer_part(reader: &mut dyn Reader, config: &Config) -> Result<(), Error> {
     // It’s important to keep in mind that trailing headers can contain
     // a ton of nasty things (like Content-Length, Host, Transfer-encoding…).
     // The spec says these invalid headers should be filtered out. Currently,
@@ -411,12 +403,12 @@ where
     }
 }
 
-fn parse_method(reader: &mut Reader, config: &Config) -> Result<Method, Error> {
+fn parse_method(reader: &mut dyn Reader, config: &Config) -> Result<Method, Error> {
     let token = parse_token(reader, config)?;
     Method::from_bytes(&token).map_err(|_| Error::Syntax)
 }
 
-fn parse_request_target_raw(reader: &mut Reader, config: &Config) -> Result<Vec<u8>, Error> {
+fn parse_request_target_raw(reader: &mut dyn Reader, config: &Config) -> Result<Vec<u8>, Error> {
     // The spec says it’s okay to parse until the next whitespace here
     // (see section 3.1.1 of RFC7230)
     let mut req_target = Vec::with_capacity(32);
@@ -434,13 +426,13 @@ fn parse_request_target_raw(reader: &mut Reader, config: &Config) -> Result<Vec<
     Err(Error::RequestTargetTooLong)
 }
 
-fn parse_request_target(reader: &mut Reader, config: &Config) -> Result<Uri, Error> {
+fn parse_request_target(reader: &mut dyn Reader, config: &Config) -> Result<Uri, Error> {
     let raw = parse_request_target_raw(reader, config)?;
     let s = String::from_utf8(raw).map_err(|_| Error::InvalidRequestTarget)?;
     s.parse().map_err(|_| Error::InvalidRequestTarget)
 }
 
-fn parse_version(reader: &mut Reader) -> Result<Version, Error> {
+fn parse_version(reader: &mut dyn Reader) -> Result<Version, Error> {
     expect(reader, b"HTTP/")?;
     let maj = read_byte(reader)?;
     expect(reader, b".")?;
@@ -456,7 +448,7 @@ fn parse_version(reader: &mut Reader) -> Result<Version, Error> {
     }
 }
 
-fn parse_status_code(reader: &mut Reader) -> Result<http::StatusCode, Error> {
+fn parse_status_code(reader: &mut dyn Reader) -> Result<http::StatusCode, Error> {
     let bytes: Vec<u8> = (0..3).try_fold(
         Vec::with_capacity(3),
         |mut acc, _| -> Result<Vec<u8>, Error> {
@@ -474,7 +466,7 @@ fn parse_status_code(reader: &mut Reader) -> Result<http::StatusCode, Error> {
     Ok(status_code)
 }
 
-fn skip_optional_status_reason(reader: &mut Reader) -> Result<(), Error> {
+fn skip_optional_status_reason(reader: &mut dyn Reader) -> Result<(), Error> {
     let max_length = 64;
     let mut i = 0;
     loop {
@@ -495,7 +487,7 @@ fn skip_optional_status_reason(reader: &mut Reader) -> Result<(), Error> {
     }
 }
 
-fn parse_header_value(reader: &mut Reader, config: &Config) -> Result<HeaderValue, Error> {
+fn parse_header_value(reader: &mut dyn Reader, config: &Config) -> Result<HeaderValue, Error> {
     let mut content = Vec::with_capacity(32);
     loop {
         if content.len() > config.max_header_value_length {
@@ -513,7 +505,7 @@ fn parse_header_value(reader: &mut Reader, config: &Config) -> Result<HeaderValu
 }
 
 fn parse_header_field(
-    reader: &mut Reader,
+    reader: &mut dyn Reader,
     config: &Config,
 ) -> Result<(HeaderName, HeaderValue), Error> {
     let name = HeaderName::from_bytes(&parse_token(reader, config)?).map_err(|_| Error::Syntax)?;
@@ -580,7 +572,7 @@ fn check_headers(
     Ok(())
 }
 
-fn parse_headers(reader: &mut Reader, config: &Config) -> Result<HeaderMap, Error> {
+fn parse_headers(reader: &mut dyn Reader, config: &Config) -> Result<HeaderMap, Error> {
     let mut headers = HeaderMap::new();
 
     let mut count: usize = 0;
@@ -636,7 +628,7 @@ fn parse_body<S: io::Read>(
         }
 
         TransferEncoding::Chunked => {
-            let mut cr: ChunkReader<S> = ChunkReader {
+            let cr: ChunkReader<S> = ChunkReader {
                 // (3)
                 config: config.clone(),
                 reader,
@@ -651,7 +643,7 @@ fn parse_body<S: io::Read>(
     Ok(body)
 }
 
-fn parse_request_head_impl(reader: &mut Reader, config: &Config) -> Result<Request<()>, Error> {
+fn parse_request_head_impl(reader: &mut dyn Reader, config: &Config) -> Result<Request<()>, Error> {
     let method = parse_method(reader, config)?;
     expect(reader, b" ")?;
     let uri = parse_request_target(reader, config)?;
@@ -744,7 +736,7 @@ mod tests {
         fun(reader)
     }
 
-    fn with_reader<T>(bytes: &[u8], fun: &Fn(&mut Reader) -> T) -> T {
+    fn with_reader<T>(bytes: &[u8], fun: &Fn(&mut dyn Reader) -> T) -> T {
         with_reader_impl(bytes, &|mut ri| fun(&mut ri))
     }
 

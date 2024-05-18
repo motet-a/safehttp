@@ -17,7 +17,7 @@ fn poison(_buffer: &mut [u8]) {}
 /// If an “end of file” is encountered after reading `n` bytes,
 /// then `Ok(n)` is returned and only the `n` first bytes of the
 /// buffer are valid.
-fn reliable_read_partial(stream: &mut io::Read, buffer: &mut [u8]) -> io::Result<usize> {
+fn reliable_read_partial(stream: &mut dyn io::Read, buffer: &mut [u8]) -> io::Result<usize> {
     let mut total = 0;
     loop {
         match stream.read(&mut buffer[total..]) {
