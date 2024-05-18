@@ -526,10 +526,10 @@ fn check_host_header(host_source: &HeaderValue, uri: &Uri) -> Result<(), Error> 
 
     let host_str = host_source.to_str().map_err(|_| Error::InvalidHost)?;
     let host_uri: Uri = host_str.parse().map_err(|_| Error::InvalidHost)?;
-    let host_authority = host_uri.authority_part().ok_or(Error::InvalidHost)?;
-    if let Some(target_authority) = uri.authority_part() {
+    let host_authority = host_uri.authority().ok_or(Error::InvalidHost)?;
+    if let Some(target_authority) = uri.authority() {
         if target_authority.host() != host_authority.host()
-            || target_authority.port_part() != host_authority.port_part()
+            || target_authority.port() != host_authority.port()
         {
             return Err(Error::InvalidHost);
         }

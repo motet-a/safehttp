@@ -105,6 +105,8 @@ fn unparse_version(version: http::Version) -> Vec<u8> {
         Version::HTTP_10 => b"1.0",
         Version::HTTP_11 => b"1.1",
         Version::HTTP_2 => b"2.0",
+        Version::HTTP_3 => b"2.0",
+        _ => panic!(),
     });
     bytes
 }
