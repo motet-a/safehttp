@@ -12,6 +12,10 @@ This crate does not use any unsafe code.
 Please review this code before using it. Feedbacks and other
 contributions are highly appreciated.
 
+[!https://img.shields.io/crates/v/safehttp.svg][https://crates.io/crates/tokio]
+
+[API Docs](https://docs.rs/safehttp)
+
 ## Usage
 
 This parser uses the (de-facto standard) types in the `http` crate.
