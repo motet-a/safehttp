@@ -12,9 +12,9 @@ This crate does not use any unsafe code.
 Please review this code before using it. Feedbacks and other
 contributions are highly appreciated.
 
-![https://img.shields.io/crates/v/safehttp.svg](https://crates.io/crates/safehttp)
+[Package on crates.io![Crates.io Version](https://img.shields.io/crates/v/safehttp)](https://crates.io/crates/safehttp)
 
-[API Docs](https://docs.rs/safehttp)
+[API Docs ![docs.rs](https://img.shields.io/docsrs/safehttp)](https://docs.rs/safehttp)
 
 ## Usage
 
