@@ -12,7 +12,7 @@ This crate does not use any unsafe code.
 Please review this code before using it. Feedbacks and other
 contributions are highly appreciated.
 
-[!https://img.shields.io/crates/v/safehttp.svg][https://crates.io/crates/tokio]
+[!https://img.shields.io/crates/v/safehttp.svg](https://crates.io/crates/safehttp)
 
 [API Docs](https://docs.rs/safehttp)
 
