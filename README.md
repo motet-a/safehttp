@@ -2,19 +2,19 @@
 
 A slow (but simple, safe and strict) HTTP/1.1 parser for Rust.
 
-Unlike many others HTTP parsers for Rust, this library focuses on
-security and not on performance. We all know most of us don’t need
-high-performance sub-microsecond SIMD-enabled event-driven zero-copy
-HTTP parsing. We all know HTTP parser vulnerabilities [do](http://nginx.org/en/security_advisories.html)
-[exist](https://httpd.apache.org/security/vulnerabilities_24.html) and
-hide theirselves inside complexity. So the simpler the better.
+Unlike some others HTTP parsers for Rust, this library focuses on
+security and not on performance. Most of us don’t need high-performance 
+sub-microsecond SIMD-enabled event-driven zero-copy HTTP parsing. We 
+all know HTTP parser vulnerabilities [do](http://nginx.org/en/security_advisories.html)
+[exist](https://httpd.apache.org/security/vulnerabilities_24.html).
+This crate does not use any unsafe code.
 
 Please review this code before using it. Feedbacks and other
 contributions are highly appreciated.
 
 ## Usage
 
-This parser uses types in the `http` crate.
+This parser uses the (de-facto standard) types in the `http` crate.
 
 [TODO]
 
@@ -48,10 +48,15 @@ before upgrading. So HTTP/1.1 parsing is required in anyway.
 HTTP/3 seems to be widly different than HTTP/2 and HTTP/1, so it’s probably
 better to support it in a different library.
 
-## TODO
+## License
+
+safehttp is primarily distributed under the terms of both the MIT license
+and the Apache License (Version 2.0). See LICENSE-APACHE and LICENSE-MIT for details.
+
+## Possible improvements
 
   - Write more tests. There are tests but more is always better.
 
-  - Try to rewrite the parser with nom. The current implementation of the
-    lookahead isn’t particularly beautiful.
-
+  - It could be worth rewriting the parser with nom. The current implementation
+  of the lookahead isn’t particularly beautiful, however this would add a
+  dependency...
