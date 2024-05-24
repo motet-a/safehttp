@@ -36,7 +36,7 @@ use character_types::{
 };
 
 mod error;
-use error::Error;
+pub use error::Error;
 
 mod parse_headers;
 
