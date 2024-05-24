@@ -729,18 +729,18 @@ mod tests {
 
     const C: &Config = &Config::DEFAULT;
 
-    fn with_reader_impl<T>(bytes: &[u8], fun: &Fn(ReaderImpl<TestStream>) -> T) -> T {
+    fn with_reader_impl<T>(bytes: &[u8], fun: &dyn Fn(ReaderImpl<TestStream>) -> T) -> T {
         let vec = bytes.to_vec();
         let cursor = io::Cursor::new(vec);
         let reader = ReaderImpl::new(cursor);
         fun(reader)
     }
 
-    fn with_reader<T>(bytes: &[u8], fun: &Fn(&mut dyn Reader) -> T) -> T {
+    fn with_reader<T>(bytes: &[u8], fun: &dyn Fn(&mut dyn Reader) -> T) -> T {
         with_reader_impl(bytes, &|mut ri| fun(&mut ri))
     }
 
-    fn read_to_end(stream: &mut io::Read) -> io::Result<Vec<u8>> {
+    fn read_to_end(stream: &mut dyn io::Read) -> io::Result<Vec<u8>> {
         let mut bytes = Vec::new();
         stream.read_to_end(&mut bytes)?;
         Ok(bytes)
