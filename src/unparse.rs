@@ -65,7 +65,7 @@ impl<S: io::Write> io::Write for BodyWriter<S> {
         match self {
             BodyWriter::Raw(r) => r.write(buf),
             BodyWriter::Chunked(cw) => {
-                assert!(buf.len() > 0, "an HTTP chunk cannot be empty");
+                assert!(!buf.is_empty(), "an HTTP chunk cannot be empty");
                 cw.write_chunk(buf)?;
                 Ok(buf.len())
             }
@@ -81,7 +81,7 @@ impl<S: io::Write> io::Write for BodyWriter<S> {
 }
 
 fn unparse_token(token: &[u8]) -> Vec<u8> {
-    assert!(token.len() > 0);
+    assert!(!token.is_empty());
     assert!(token.iter().all(|b| character_types::is_token_byte(*b)));
     token.to_vec()
 }
@@ -112,7 +112,7 @@ fn unparse_version(version: http::Version) -> Vec<u8> {
 }
 
 fn unparse_header_value(value: &[u8]) -> Vec<u8> {
-    assert!(value.len() > 0);
+    assert!(!value.is_empty());
     assert!(value
         .iter()
         .all(|b| character_types::is_header_value_byte(*b)));
@@ -195,7 +195,7 @@ pub fn unparse_response_head<B>(response: &http::Response<B>) -> Vec<u8> {
         v.extend(reason.as_bytes());
     }
     v.extend(b"\r\n");
-    v.extend(unparse_headers(&response.headers()));
+    v.extend(unparse_headers(response.headers()));
     v.extend(b"\r\n");
     v
 }
