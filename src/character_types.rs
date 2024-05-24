@@ -1,10 +1,10 @@
 pub fn is_whitespace_byte(b: u8) -> bool {
-    return b == b' ' || b == b'\t';
+    b == b' ' || b == b'\t'
 }
 
 /// VCHAR
 pub fn is_visible_byte(byte: u8) -> bool {
-    byte >= 0x21 && byte <= 0x7e
+    (0x21..=0x7e).contains(&byte)
 }
 
 pub fn is_token_byte(byte: u8) -> bool {

@@ -104,7 +104,7 @@ where
     fn read_bytes_partial(&mut self, out_buffer: &mut [u8]) -> io::Result<usize> {
         poison(out_buffer);
 
-        if out_buffer.len() == 0 {
+        if out_buffer.is_empty() {
             return Ok(0);
         }
 
@@ -125,7 +125,7 @@ where
     }
 
     fn unread_byte(&mut self, byte: u8) {
-        assert!(self.pushed_back_byte == None);
+        assert!(self.pushed_back_byte.is_none());
         self.pushed_back_byte = Some(byte)
     }
 }

@@ -206,7 +206,7 @@ fn read_byte(reader: &mut dyn Reader) -> Result<u8, Error> {
 }
 
 fn expect(reader: &mut dyn Reader, expected: &'static [u8]) -> Result<(), Error> {
-    assert!(expected.len() > 0);
+    assert!(!expected.is_empty());
 
     let mut bytes = vec![0u8; expected.len()];
     read_bytes(reader, &mut bytes)?;
@@ -244,7 +244,7 @@ fn parse_token(reader: &mut dyn Reader, config: &Config) -> Result<Vec<u8>, Erro
         let byte = read_byte(reader)?;
         if !is_token_byte(byte) {
             reader.unread_byte(byte);
-            if token.len() == 0 {
+            if token.is_empty() {
                 return Err(Error::Syntax);
             }
             return Ok(token);
@@ -260,9 +260,7 @@ fn parse_chunk_size(reader: &mut dyn Reader, config: &Config) -> Result<usize, C
             return Err(ChunkHeaderError::SizeTooLarge);
         }
 
-        let byte = reader
-            .read_byte()
-            .map_err(|ioe| ChunkHeaderError::IO(ioe))?;
+        let byte = reader.read_byte().map_err(ChunkHeaderError::IO)?;
         if !byte.is_ascii_hexdigit() {
             reader.unread_byte(byte);
             break;
@@ -287,9 +285,7 @@ fn skip_chunk_ext(reader: &mut dyn Reader, config: &Config) -> Result<(), ChunkH
         if ext_length > config.max_chunk_ext_length {
             return Err(ChunkHeaderError::ExtTooLong);
         }
-        let byte = reader
-            .read_byte()
-            .map_err(|ioe| ChunkHeaderError::IO(ioe))?;
+        let byte = reader.read_byte().map_err(ChunkHeaderError::IO)?;
         if byte == b'\r' {
             reader.unread_byte(byte);
             break;
@@ -412,7 +408,7 @@ fn parse_request_target_raw(reader: &mut dyn Reader, config: &Config) -> Result<
         let byte = read_byte(reader)?;
         if byte == b' ' {
             reader.unread_byte(byte);
-            if req_target.len() == 0 {
+            if req_target.is_empty() {
                 return Err(Error::Syntax);
             }
             return Ok(req_target);
@@ -512,7 +508,7 @@ fn parse_header_field(
 }
 
 fn check_host_header(host_source: &HeaderValue, uri: &Uri) -> Result<(), Error> {
-    if host_source.as_bytes().len() == 0 {
+    if host_source.as_bytes().is_empty() {
         return Ok(());
     }
 
@@ -626,7 +622,7 @@ fn parse_body<S: io::Read>(
         TransferEncoding::Chunked => {
             let cr: ChunkReader<S> = ChunkReader {
                 // (3)
-                config: config.clone(),
+                config: *config,
                 reader,
                 begin: true,
                 remaining_chunk_size: 0,
