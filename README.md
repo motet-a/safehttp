@@ -20,7 +20,21 @@ contributions are highly appreciated.
 
 This parser uses the (de-facto standard) types in the `http` crate.
 
-[TODO]
+The documentation is available here: https://docs.rs/safehttp
+
+### Simple example
+
+```rust
+extern crate http;
+extern crate safehttp;
+
+let source = b"GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n";
+let request = safehttp::parse_request(&source[..], &safehttp::Config::DEFAULT).unwrap();
+
+assert_eq!(request.method(), http::Method::GET);
+assert_eq!(request.uri(), "/index.html");
+assert_eq!(request.headers().get("host").unwrap(), "example.com");
+```
 
 ## RFC 7230 compliance
 

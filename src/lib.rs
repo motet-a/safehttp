@@ -9,13 +9,9 @@
 //! ```
 //! extern crate http;
 //! extern crate safehttp;
-//! use std::io;
 //!
-//! let mut source = io::Cursor::new(
-//!     b"GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n".to_vec()
-//! );
-//! let config = &safehttp::Config::DEFAULT;
-//! let request = safehttp::parse_request(&mut source, config).unwrap();
+//! let source = b"GET /index.html HTTP/1.1\r\nHost: example.com\r\n\r\n";
+//! let request = safehttp::parse_request(&source[..], &safehttp::Config::DEFAULT).unwrap();
 //!
 //! assert_eq!(request.method(), http::Method::GET);
 //! assert_eq!(request.uri(), "/index.html");
